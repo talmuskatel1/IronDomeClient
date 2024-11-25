@@ -3,7 +3,7 @@ import { Box, Typography, CircularProgress, ToggleButton, ToggleButtonGroup } fr
 import { MapContainer, TileLayer, Rectangle, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapCell, Dome } from '../types';
+import { MapCell, Dome, Alert } from '../types';  
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -19,11 +19,45 @@ L.Marker.prototype.options.icon = DefaultIcon;
 interface MapComponentProps {
   mapData: MapCell[];
   domes: Dome[];
+  alerts: Alert[]; 
   error: string | null;
   onCellClick: (cellId: string) => void;
   loading: boolean;
 }
+const AlertMarkers: React.FC<{ alerts: Alert[] }> = ({ alerts }) => {
+  const map = useMap();
 
+  return (
+    <>
+      {alerts.flatMap(alert => 
+        alert.areas.map(area => (
+          <CircleMarker
+            key={`${alert.id}-${area.areaName}`}
+            center={[area.lat, area.lng]}
+            radius={15}
+            pathOptions={{
+              color: '#ff0000',
+              fillColor: '#ff0000',
+              fillOpacity: 0.6,
+              weight: 2,
+              dashArray: '5, 5'
+            }}
+          >
+            <Tooltip permanent>
+              <div style={{ direction: 'rtl', textAlign: 'right' }}>
+                <strong>{area.areaNameHe}</strong>
+                <br />
+                {alert.category}
+                <br />
+                {new Date(alert.timestamp).toLocaleTimeString('he-IL')}
+              </div>
+            </Tooltip>
+          </CircleMarker>
+        ))
+      )}
+    </>
+  );
+};
 const AnimatedDomes: React.FC<{ domes: Dome[] }> = ({ domes }) => {
   const [animatedDomes, setAnimatedDomes] = useState<Dome[]>(domes);
   const map = useMap();
@@ -77,8 +111,9 @@ const AnimatedDomes: React.FC<{ domes: Dome[] }> = ({ domes }) => {
   );
 };
 
-const MapComponent: React.FC<MapComponentProps> = ({ mapData, domes, error, onCellClick, loading }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ mapData, domes, alerts, error, onCellClick, loading }) => {
   const [viewMode, setViewMode] = useState<'threat' | 'importance'>('threat');
+  const [showAlerts, setShowAlerts] = useState(true); 
 
   const getColor = (value: number, mode: 'threat' | 'importance'): string => {
     if (mode === 'threat') {
@@ -90,6 +125,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ mapData, domes, error, onCe
       const g = Math.min(255, Math.round(value * 255));
       return `rgb(0, ${g}, ${b})`;
     }
+  };
+
+  const calculateLongitudeOffset = (latitude: number, baseOffset: number): number => {
+    return baseOffset / Math.cos((latitude * Math.PI) / 180);
   };
 
   if (loading) {
@@ -147,34 +186,38 @@ const MapComponent: React.FC<MapComponentProps> = ({ mapData, domes, error, onCe
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?language=he"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
-        {mapData.map((cell) => (
-          <Rectangle
-            key={cell.id}
-            bounds={[
-              [cell.coordinate.lat, cell.coordinate.lng],
-              [cell.coordinate.lat + 0.025, cell.coordinate.lng + 0.025]
-            ]}
-            pathOptions={{
-              color: 'transparent',
-              weight: 0,
-              fillColor: getColor(
-                viewMode === 'threat' ? cell.threatLevel : cell.importanceLevel,
-                viewMode
-              ),
-              fillOpacity: 0.4
-            }}
-            eventHandlers={{
-              click: () => onCellClick(cell.id)
-            }}
-          >
-            <Tooltip >
-              <div>Threat: {cell.threatLevel.toFixed(2)}</div>
-              <div>Imporatnce: {cell.importanceLevel.toFixed(2)}</div>
-              <div>Building Density: {cell.buildingDensity.toFixed(2)}</div>
-            </Tooltip>
-          </Rectangle>
-        ))}
+{mapData.map((cell) => {
+  const halfSize = 0.0125;
+  return (
+    <Rectangle
+      key={cell.id}
+      bounds={[
+        [cell.coordinate.lat - halfSize, cell.coordinate.lng - halfSize],
+        [cell.coordinate.lat + halfSize, cell.coordinate.lng + halfSize]
+      ]}
+      pathOptions={{
+        color: 'transparent',
+        weight: 0,
+        fillColor: getColor(
+          viewMode === 'threat' ? cell.threatLevel : cell.importanceLevel,
+          viewMode
+        ),
+        fillOpacity: 0.5
+      }}
+      eventHandlers={{
+        click: () => onCellClick(cell.id)
+      }}
+    >
+      <Tooltip>
+        <div>Threat: {cell.threatLevel.toFixed(2)}</div>
+        <div>Importance: {cell.importanceLevel.toFixed(2)}</div>
+        <div>Building Density: {cell.buildingDensity.toFixed(2)}</div>
+      </Tooltip>
+    </Rectangle>
+  );
+})}
         <AnimatedDomes domes={domes} />
+        {showAlerts && <AlertMarkers alerts={alerts} />} 
       </MapContainer>
     </Box>
   );
