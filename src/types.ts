@@ -11,6 +11,20 @@ export interface MapCell {
   buildingDensity: number;
   isInIsrael: boolean;
 }
+export interface Alert {
+  id: string;
+  category: string;
+  title: string;
+  description: string;
+  areas: AlertArea[];
+  timestamp: Date;
+}
+export interface AlertArea {
+  areaName: string;
+  areaNameHe: string;
+  lat: number;
+  lng: number;
+  threatLevel: number;}
 
 export interface Dome {
   id: string;

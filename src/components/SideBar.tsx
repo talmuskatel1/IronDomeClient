@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Drawer, Typography, TextField, Button, Box, useTheme } from '@mui/material';
 import AddLocationIcon from '@mui/icons-material/AddLocation';
 import ClearIcon from '@mui/icons-material/Clear';
+import { useNavigate } from 'react-router-dom';
 import Logo from './Logo';
 interface SidebarProps {
   onPlaceDomes: (count: number) => void;
@@ -13,9 +14,14 @@ const drawerWidth = 240;
 const Sidebar: React.FC<SidebarProps> = ({ onPlaceDomes, onClear }) => {
     const theme = useTheme();
     const [domeCount, setDomeCount] = useState(10);
+    const navigate = useNavigate();
   
     const handlePlaceDomes = () => {
       onPlaceDomes(domeCount);
+    };
+    const handleSignOut = () => {
+      localStorage.removeItem('token');
+      navigate('/login');
     };
   
     return (
@@ -63,6 +69,21 @@ const Sidebar: React.FC<SidebarProps> = ({ onPlaceDomes, onClear }) => {
           >
             Clear
           </Button>
+          <Button 
+  onClick={handleSignOut}
+  sx={{ 
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    color: 'white',
+    backgroundColor: '#d32f2f',
+    '&:hover': {
+      backgroundColor: '#b71c1c',
+    }
+  }}
+>
+  Sign Out
+</Button>
         </Box>
       </Drawer>
     );
